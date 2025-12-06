@@ -1,28 +1,31 @@
-import mongoose from "mongoose";
 import testConnect from "@/testConnect/page";
+
 export async function GET() {
   try {
-    await testConnect(); // Validate DB linkage
-    return new Response(
-      JSON.stringify({ response: "connected succesfully." }),
+    await testConnect();
+
+    return Response.json(
+      { success: true, message: "Connected successfully" },
       {
         status: 200,
         headers: {
-          "Content-Type": "application/json",
           "X-Security-Token": "Active",
         },
       }
     );
   } catch (err) {
-    return new Response(
-      JSON.stringify({ anomaly: "Database handshake disrupted", diagnostics: err.message }),
+    console.error("DB Connect API Error:", err);
+
+    return Response.json(
+      {
+        success: false,
+        message: "Database handshake disrupted",
+        diagnostics: err.message,
+      },
       {
         status: 503,
-        headers: {
-          "Content-Type": "application/json",
-          "Retry-After": "3600",
-        },
+        headers: { "Retry-After": "3600" },
       }
     );
-  }  
+  }
 }

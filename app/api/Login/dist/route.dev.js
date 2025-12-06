@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.POST = void 0;
+exports.POST = POST;
 
 var _page = _interopRequireDefault(require("@/testConnect/page"));
 
@@ -15,82 +15,107 @@ var _jsonwebtoken = _interopRequireDefault(require("jsonwebtoken"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
-var POST = (0, _page["default"])(function _callee(req) {
+function POST(req) {
   var body, user, bytes, userPassword, token;
-  return regeneratorRuntime.async(function _callee$(_context) {
+  return regeneratorRuntime.async(function POST$(_context) {
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          _context.next = 2;
+          _context.prev = 0;
+          _context.next = 3;
+          return regeneratorRuntime.awrap((0, _page["default"])());
+
+        case 3:
+          _context.next = 5;
           return regeneratorRuntime.awrap(req.json());
 
-        case 2:
+        case 5:
           body = _context.sent;
-          _context.next = 5;
+
+          if (!(!body.email || !body.password)) {
+            _context.next = 8;
+            break;
+          }
+
+          return _context.abrupt("return", Response.json({
+            success: false,
+            error: "Email and password are required"
+          }, {
+            status: 400
+          }));
+
+        case 8:
+          _context.next = 10;
           return regeneratorRuntime.awrap(_page2["default"].findOne({
             email: body.email
           }));
 
-        case 5:
+        case 10:
           user = _context.sent;
 
-          if (!user) {
-            _context.next = 15;
+          if (user) {
+            _context.next = 13;
             break;
           }
 
+          return _context.abrupt("return", Response.json({
+            success: false,
+            error: "User not found"
+          }, {
+            status: 404
+          }));
+
+        case 13:
           bytes = _cryptoJs["default"].AES.decrypt(user.password, process.env.PASSWORD_SECRET_);
           userPassword = bytes.toString(_cryptoJs["default"].enc.Utf8);
 
-          if (!(body.password === userPassword)) {
-            _context.next = 14;
+          if (!(body.password !== userPassword)) {
+            _context.next = 17;
             break;
           }
 
-          token = _jsonwebtoken["default"].sign({
-            success: true,
-            email: body.email,
-            name: user.name
-          }, process.env.JWT_SECRET_, {
-            expiresIn: '1d'
-          });
-          return _context.abrupt("return", new Response(JSON.stringify({
-            success: true,
-            token: token
-          }), {
-            status: 200,
-            headers: {
-              "Content-Type": "application/json"
-            }
-          }));
-
-        case 14:
-          return _context.abrupt("return", new Response(JSON.stringify({
+          return _context.abrupt("return", Response.json({
             success: false,
             error: "Invalid password"
-          }), {
-            status: 401,
-            headers: {
-              "Content-Type": "application/json"
-            }
+          }, {
+            status: 401
           }));
 
-        case 15:
-          return _context.abrupt("return", new Response(JSON.stringify({
+        case 17:
+          token = _jsonwebtoken["default"].sign({
+            id: user._id,
+            email: user.email,
+            name: user.name
+          }, process.env.JWT_SECRET_, {
+            expiresIn: "4d"
+          });
+          return _context.abrupt("return", Response.json({
+            success: true,
+            token: token,
+            user: {
+              id: user._id,
+              email: user.email,
+              name: user.name
+            }
+          }, {
+            status: 200
+          }));
+
+        case 21:
+          _context.prev = 21;
+          _context.t0 = _context["catch"](0);
+          console.error("Login error:", _context.t0);
+          return _context.abrupt("return", Response.json({
             success: false,
-            error: "User not found"
-          }), {
-            status: 404,
-            headers: {
-              "Content-Type": "application/json"
-            }
+            error: "Internal server error"
+          }, {
+            status: 500
           }));
 
-        case 16:
+        case 25:
         case "end":
           return _context.stop();
       }
     }
-  });
-});
-exports.POST = POST;
+  }, null, null, [[0, 21]]);
+}

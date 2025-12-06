@@ -135,4 +135,4 @@ const HomePage = () => {  // Changed from InfoPage to HomePage
   );
 };
 
-export default HomePage;  // Changed from InfoPage to HomePage
+export default HomePage;  

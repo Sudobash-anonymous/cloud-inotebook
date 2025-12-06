@@ -2,12 +2,15 @@ import nodemailer from "nodemailer";
 
 export async function POST(request) {
   try {
-    const { email, text,subject } = await request.json();
+    const { email, text, subject } = await request.json();
 
     if (!email || !text) {
       return new Response(
-        JSON.stringify({ success: false, error: "Email and message are required" }),
-        { status: 400 }
+        JSON.stringify({
+          success: false,
+          error: "Email and message are required",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -20,20 +23,24 @@ export async function POST(request) {
     });
 
     await transporter.sendMail({
-      from: `Cloud Nodebook <${process.env.GMAIL_USER}>`,
+      from: `Cloud Notebook <${process.env.GMAIL_USER}>`,
       to: email,
-      subject:subject,
+      subject,
       text,
     });
 
     return new Response(
-      JSON.stringify({ success: true, message: "Email sent successfully!" }),
-      { status: 200 }
+      JSON.stringify({
+        success: true,
+        message: "Email sent successfully!",
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("Mail Verify Error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { status: 500 }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }

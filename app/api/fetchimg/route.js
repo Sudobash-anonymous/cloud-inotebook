@@ -1,17 +1,20 @@
-import dbConnect from "@/testConnect/page";
-import Upload from "@/model/image/page"; // ✅ required for using Upload.find()
+import testConnect from "@/testConnect/page";
+import Upload from "@/model/image/page";
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
-  await dbConnect(); // ✅ ensure MongoDB is connected
-
-  const email = req.nextUrl.searchParams.get("email");
-
-  if (!email) {
-    return NextResponse.json({ success: false, message: "Email is required" }, { status: 400 });
-  }
-
   try {
+    await testConnect();
+
+    const email = req.nextUrl.searchParams.get("email");
+
+    if (!email) {
+      return NextResponse.json(
+        { success: false, message: "Email is required" },
+        { status: 400 }
+      );
+    }
+
     const uploads = await Upload.find({ email });
 
     const formatted = uploads.map((item) => ({
@@ -20,8 +23,16 @@ export async function GET(req) {
       contentType: item.file.contentType,
     }));
 
-    return NextResponse.json({ success: true, uploads: formatted });
+    return NextResponse.json(
+      { success: true, uploads: formatted },
+      { status: 200 }
+    );
   } catch (error) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    console.error("Fetch Image Error:", error);
+
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

@@ -1,5 +1,5 @@
 import testConnect from "@/testConnect/page";
-import Contact from "@/model/text/page"; // your schema
+import Contact from "@/model/text/page";
 
 export async function POST(req) {
   try {
@@ -7,25 +7,22 @@ export async function POST(req) {
 
     const { _id, email, subject, tag, message } = await req.json();
 
-    // Validate input
     if (!_id || !email || !subject || !tag || !message) {
-      return new Response(JSON.stringify({ error: "All fields are required." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(
+        { success: false, error: "All fields are required" },
+        { status: 400 }
+      );
     }
 
-    // Check if the record exists
     const record = await Contact.findOne({ _id, email });
 
     if (!record) {
-      return new Response(JSON.stringify({ error: "No matching record found." }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(
+        { success: false, error: "No matching record found" },
+        { status: 404 }
+      );
     }
 
-    // Update the record
     record.subject = subject;
     record.tag = tag;
     record.message = message;
@@ -33,15 +30,16 @@ export async function POST(req) {
 
     await record.save();
 
-    return new Response(JSON.stringify({ success: true, message: "Record updated successfully." }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-
+    return Response.json(
+      { success: true, message: "Record updated successfully" },
+      { status: 200 }
+    );
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Update failed", details: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("Edit Text Error:", err);
+
+    return Response.json(
+      { success: false, error: "Update failed", details: err.message },
+      { status: 500 }
+    );
   }
 }

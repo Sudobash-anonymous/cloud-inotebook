@@ -1,33 +1,30 @@
-import mongoose from "mongoose";
 import testConnect from "@/testConnect/page";
-import Contact from "@/model/text/page"; // Adjust if needed
+import Contact from "@/model/text/page";
 
 export async function POST(req) {
   try {
     await testConnect();
 
-    const body = await req.json();
-    const { subject, tag, message, email } = body;
+    const { subject, tag, message, email } = await req.json();
 
-    // ✅ Check for all required fields
     if (!subject || !tag || !message || !email) {
-      return new Response(JSON.stringify({ error: "All fields are required." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(
+        { success: false, error: "All fields are required" },
+        { status: 400 }
+      );
     }
 
     const newMessage = await Contact.create({ subject, tag, message, email });
 
-    return new Response(JSON.stringify({ success: true, data: newMessage }), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    });
-
+    return Response.json(
+      { success: true, data: newMessage },
+      { status: 201 }
+    );
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Failed to save data", details: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("TextCloud Error:", err);
+    return Response.json(
+      { success: false, error: "Failed to save data", details: err.message },
+      { status: 500 }
+    );
   }
 }

@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.POST = void 0;
+exports.POST = POST;
 
 var _page = _interopRequireDefault(require("@/testConnect/page"));
 
@@ -11,77 +11,86 @@ var _page2 = _interopRequireDefault(require("@/model/UserLogin/page"));
 
 var _cryptoJs = _interopRequireDefault(require("crypto-js"));
 
+var _jsonwebtoken = _interopRequireDefault(require("jsonwebtoken"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
-var jwt = require('jsonwebtoken');
-
-var POST = (0, _page["default"])(function _callee(req, res) {
+function POST(req) {
   var body, existingUser, encryptedPassword, newUser, token;
-  return regeneratorRuntime.async(function _callee$(_context) {
+  return regeneratorRuntime.async(function POST$(_context) {
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          _context.next = 2;
+          _context.prev = 0;
+          _context.next = 3;
+          return regeneratorRuntime.awrap((0, _page["default"])());
+
+        case 3:
+          _context.next = 5;
           return regeneratorRuntime.awrap(req.json());
 
-        case 2:
-          body = _context.sent;
-          _context.next = 5;
-          return regeneratorRuntime.awrap(_page2["default"].findOne({
-            "email": body.email
-          }));
-
         case 5:
-          existingUser = _context.sent;
-
-          if (!existingUser) {
-            _context.next = 8;
-            break;
-          }
-
-          return _context.abrupt("return", new Response(JSON.stringify({
-            success: false,
-            error: "Email already registered"
-          }), {
-            status: 400,
-            headers: {
-              "content-type": "application/json"
-            }
+          body = _context.sent;
+          _context.next = 8;
+          return regeneratorRuntime.awrap(_page2["default"].findOne({
+            email: body.email
           }));
 
         case 8:
+          existingUser = _context.sent;
+
+          if (!existingUser) {
+            _context.next = 11;
+            break;
+          }
+
+          return _context.abrupt("return", Response.json({
+            success: false,
+            error: "Email already registered"
+          }, {
+            status: 400
+          }));
+
+        case 11:
           encryptedPassword = _cryptoJs["default"].AES.encrypt(body.password, process.env.PASSWORD_SECRET_).toString();
           newUser = new _page2["default"]({
             name: body.name,
             email: body.email,
             password: encryptedPassword
           });
-          _context.next = 12;
+          _context.next = 15;
           return regeneratorRuntime.awrap(newUser.save());
 
-        case 12:
-          token = jwt.sign({
+        case 15:
+          token = _jsonwebtoken["default"].sign({
             success: true,
             email: body.email,
             name: body.name
           }, process.env.JWT_SECRET_, {
-            expiresIn: '1d'
+            expiresIn: "1d"
           });
-          return _context.abrupt("return", new Response(JSON.stringify({
+          return _context.abrupt("return", Response.json({
             success: true,
             token: token
-          }), {
-            status: 201,
-            headers: {
-              "content-type": "application/json"
-            }
+          }, {
+            status: 201
           }));
 
-        case 14:
+        case 19:
+          _context.prev = 19;
+          _context.t0 = _context["catch"](0);
+          console.error("LoginNew Error:", _context.t0);
+          return _context.abrupt("return", Response.json({
+            success: false,
+            error: "Internal server error"
+          }, {
+            status: 500
+          }));
+
+        case 23:
         case "end":
           return _context.stop();
       }
     }
-  });
-});
-exports.POST = POST;
+  }, null, null, [[0, 19]]);
+}

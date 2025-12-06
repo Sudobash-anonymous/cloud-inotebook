@@ -1,28 +1,34 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";      // 🟢 Step 1: import dotenv
-dotenv.config();                  // 🟢 Step 2: load your .env.local file
+import dotenv from "dotenv";
 
-const connectDB = (handler) => async (req, res) => {
-  if (mongoose.connections[0].readyState) {
-    console.log("✅ Already connected to MongoDB");
-    return handler(req, res);
-  }
-  
-  try {
-    console.log("🌐 Trying to connect with URI:", process.env.MONGODB_URI);  // 🛠️ Debug log  
-    await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/my_All_data");
-    console.log("✅ Connected to MongoDB");
-  } catch (error) {
-    console.error("❌ MongoDB connection error:", error);
+dotenv.config();
 
-    // 🛠️ Fixing: res.status is not a function in Next.js App Router
-    return new Response(
-      JSON.stringify({ error: "Database connection failed" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+export default async function testConnect() {
+  const MONGO_URI = process.env.MONGODB_URI;
+
+  // ✅ Do NOT crash during build
+  if (!MONGO_URI) {
+    console.warn("⚠️ MONGODB_URI missing. Skipping DB connect for now.");
+    return;
   }
 
-  return handler(req, res);
-};
+  if (cached.conn) {
+    return cached.conn;
+  }
 
-export default connectDB;
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGO_URI).then((mongoose) => {
+      console.log("✅ MongoDB Connected");
+      return mongoose;
+    });
+  }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
+}

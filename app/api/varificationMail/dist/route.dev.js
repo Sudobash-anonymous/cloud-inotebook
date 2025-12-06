@@ -35,7 +35,10 @@ function POST(request) {
             success: false,
             error: "Email and message are required"
           }), {
-            status: 400
+            status: 400,
+            headers: {
+              "Content-Type": "application/json"
+            }
           }));
 
         case 9:
@@ -48,7 +51,7 @@ function POST(request) {
           });
           _context.next = 12;
           return regeneratorRuntime.awrap(transporter.sendMail({
-            from: "Settlesmart_solution <".concat(process.env.GMAIL_USER, ">"),
+            from: "Cloud Notebook <".concat(process.env.GMAIL_USER, ">"),
             to: email,
             subject: subject,
             text: text
@@ -59,20 +62,27 @@ function POST(request) {
             success: true,
             message: "Email sent successfully!"
           }), {
-            status: 200
+            status: 200,
+            headers: {
+              "Content-Type": "application/json"
+            }
           }));
 
         case 15:
           _context.prev = 15;
           _context.t0 = _context["catch"](0);
+          console.error("Mail Verify Error:", _context.t0);
           return _context.abrupt("return", new Response(JSON.stringify({
             success: false,
             error: _context.t0.message
           }), {
-            status: 500
+            status: 500,
+            headers: {
+              "Content-Type": "application/json"
+            }
           }));
 
-        case 18:
+        case 19:
         case "end":
           return _context.stop();
       }

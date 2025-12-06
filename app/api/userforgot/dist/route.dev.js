@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.POST = void 0;
+exports.POST = POST;
 
 var _page = _interopRequireDefault(require("@/testConnect/page"));
 
@@ -13,28 +13,32 @@ var _cryptoJs = _interopRequireDefault(require("crypto-js"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
-var POST = (0, _page["default"])(function _callee(req, res) {
+function POST(req) {
   var body, user, encryptedPassword;
-  return regeneratorRuntime.async(function _callee$(_context) {
+  return regeneratorRuntime.async(function POST$(_context) {
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
           _context.prev = 0;
           _context.next = 3;
-          return regeneratorRuntime.awrap(req.json());
+          return regeneratorRuntime.awrap((0, _page["default"])());
 
         case 3:
+          _context.next = 5;
+          return regeneratorRuntime.awrap(req.json());
+
+        case 5:
           body = _context.sent;
-          _context.next = 6;
+          _context.next = 8;
           return regeneratorRuntime.awrap(_page2["default"].findOne({
             email: body.email
           }));
 
-        case 6:
+        case 8:
           user = _context.sent;
 
           if (user) {
-            _context.next = 9;
+            _context.next = 11;
             break;
           }
 
@@ -44,49 +48,45 @@ var POST = (0, _page["default"])(function _callee(req, res) {
           }), {
             status: 404,
             headers: {
-              "content-type": "application/json"
+              "Content-Type": "application/json"
             }
           }));
 
-        case 9:
-          // Encrypt new password
-          encryptedPassword = _cryptoJs["default"].AES.encrypt(body.password, process.env.PASSWORD_SECRET_).toString(); // Update password
-
+        case 11:
+          encryptedPassword = _cryptoJs["default"].AES.encrypt(body.password, process.env.PASSWORD_SECRET_).toString();
           user.password = encryptedPassword;
-          _context.next = 13;
+          _context.next = 15;
           return regeneratorRuntime.awrap(user.save());
 
-        case 13:
+        case 15:
           return _context.abrupt("return", new Response(JSON.stringify({
             success: true,
             message: "Password updated successfully"
           }), {
             status: 200,
             headers: {
-              "content-type": "application/json"
+              "Content-Type": "application/json"
             }
           }));
 
-        case 16:
-          _context.prev = 16;
+        case 18:
+          _context.prev = 18;
           _context.t0 = _context["catch"](0);
-          console.error("FORGOT PASSWORD API ERROR:", _context.t0); // Log the error
-
+          console.error("FORGOT PASSWORD API ERROR:", _context.t0);
           return _context.abrupt("return", new Response(JSON.stringify({
             success: false,
             error: "Server error"
           }), {
             status: 500,
             headers: {
-              "content-type": "application/json"
+              "Content-Type": "application/json"
             }
           }));
 
-        case 20:
+        case 22:
         case "end":
           return _context.stop();
       }
     }
-  }, null, null, [[0, 16]]);
-});
-exports.POST = POST;
+  }, null, null, [[0, 18]]);
+}

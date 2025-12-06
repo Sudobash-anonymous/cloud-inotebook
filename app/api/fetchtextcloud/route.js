@@ -1,43 +1,38 @@
-import mongoose from "mongoose";
 import testConnect from "@/testConnect/page";
-import Contact from "@/model/text/page"; // Your schema
+import Contact from "@/model/text/page";
 
 export async function POST(req) {
   try {
     await testConnect();
 
-    const body = await req.json();
-    const { email } = body;
+    const { email } = await req.json();
 
-    // 🔍 Check for email
     if (!email) {
-      return new Response(JSON.stringify({ error: "Email is required." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(
+        { success: false, error: "Email is required" },
+        { status: 400 }
+      );
     }
 
-    // 🔍 Fetch all messages by email
-const messages = await Contact.find({ email }).sort({ createdAt: -1 });
+    const messages = await Contact.find({ email }).sort({ createdAt: -1 });
 
-    // ❗Optional: Handle case where no messages are found
-    if (messages.length === 0) {
-      return new Response(JSON.stringify({ message: "No data found for this email." }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (!messages || messages.length === 0) {
+      // you can change to success:true if you wanna treat "no data" as normal
+      return Response.json(
+        { success: false, message: "No data found for this email" },
+        { status: 404 }
+      );
     }
 
-    // ✅ Return the messages
-    return new Response(JSON.stringify({ success: true, data: messages }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-
+    return Response.json(
+      { success: true, data: messages },
+      { status: 200 }
+    );
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Failed to fetch data", details: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("FetchTextCloud Error:", err);
+    return Response.json(
+      { success: false, error: "Failed to fetch data", details: err.message },
+      { status: 500 }
+    );
   }
 }

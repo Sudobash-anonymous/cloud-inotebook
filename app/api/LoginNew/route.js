@@ -1,39 +1,51 @@
 import testConnect from "@/testConnect/page";
 import User from "@/model/UserLogin/page";
 import CryptoJS from "crypto-js";
-var jwt = require('jsonwebtoken');
+import jwt from "jsonwebtoken";
 
-export const POST = testConnect(async (req, res) => {
+export async function POST(req) {
+  try {
+    await testConnect();
+
     const body = await req.json();
 
-    // Check if the user already exists 
-    const existingUser = await User.findOne({ "email": body.email });
+    const existingUser = await User.findOne({ email: body.email });
 
     if (existingUser) {
-        return new Response(
-            JSON.stringify({ success: false, error: "Email already registered" }),
-            { status: 400, headers: { "content-type": "application/json" } }
-        );
+      return Response.json(
+        { success: false, error: "Email already registered" },
+        { status: 400 }
+      );
     }
-const encryptedPassword = CryptoJS.AES.encrypt(body.password, process.env.PASSWORD_SECRET_).toString();
 
-        const newUser = new User({
-            name: body.name,
-            email: body.email,
-            password: encryptedPassword,
-        });
+    const encryptedPassword = CryptoJS.AES.encrypt(
+      body.password,
+      process.env.PASSWORD_SECRET_
+    ).toString();
 
-        await newUser.save();
+    const newUser = new User({
+      name: body.name,
+      email: body.email,
+      password: encryptedPassword,
+    });
 
-        var token = jwt.sign(
-            { success: true, email: body.email, name: body.name },
-            process.env.JWT_SECRET_,
-            { expiresIn: '1d' }
-        );
+    await newUser.save();
 
-        return new Response(
-            JSON.stringify({ success: true, token }),
-            { status: 201, headers: { "content-type": "application/json" } }
-        );
-    
-});
+    const token = jwt.sign(
+      { success: true, email: body.email, name: body.name },
+      process.env.JWT_SECRET_,
+      { expiresIn: "1d" }
+    );
+
+    return Response.json(
+      { success: true, token },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("LoginNew Error:", error);
+    return Response.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
