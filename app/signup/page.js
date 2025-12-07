@@ -89,7 +89,7 @@ export default function SignUpPage() {
     setMessage("Sending...");
 
     const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP 
-const text = `🔐 Your verification code is: ${otp}\nThis OTP is valid for 10 minutes.\n\n— Sent by Mohit Yadav | Cloud Notebook Team`;
+const text = `🔐 Your verification code is: ${otp}\nThis OTP is valid for 10 minutes.\n\n— Sent by faiz ahmad | Cloud Notebook Team`;
     setcotp(otp)
     const subject = "verification Mail";
 
