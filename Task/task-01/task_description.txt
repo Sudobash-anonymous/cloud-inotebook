@@ -41,7 +41,7 @@ task_description: |
   - Docker build succeeds without runtime env present
 
 author_name: Faiz ahmad
-author_email: mdfaizahmad678@gmail.com
+author_email: mdfaizahmad678@gmail.co
 difficulty: hard
 category: Bug Resolution
 tags: [nextjs, mongoose, api, docker, backend]
