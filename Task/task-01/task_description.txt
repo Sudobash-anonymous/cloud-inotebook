@@ -1,3 +1,15 @@
+Implementation File Requirement:
+
+The unified reusable database connector MUST be implemented in the following file:
+
+app/testConnect/page.js
+
+All API routes must import and use this exact file. The automated test suite will
+directly load this file using Node.js to verify correct behavior when environment
+variables such as MONGODB_URI are missing. Any other connector file location
+will be considered invalid.
+
+
 task_description: |
   task-01
 
@@ -41,7 +53,7 @@ task_description: |
   - Docker build succeeds without runtime env present
 
 author_name: Faiz ahmad
-author_email: mdfaizahmad678@gmail.co
+author_email: mdfaizahmad678@gmail.com
 difficulty: hard
 category: Bug Resolution
 tags: [nextjs, mongoose, api, docker, backend]
