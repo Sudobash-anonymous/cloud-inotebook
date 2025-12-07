@@ -1,0 +1,133 @@
+*** Begin Patch
+*** Add File: utils/rateLimiter.js
++const buckets = new Map();
++
++export function rateLimit(key, { limit, windowMs }) {
++  const now = Date.now();
++  const bucket = buckets.get(key) || { count: 0, resetAt: now + windowMs };
++
++  if (now > bucket.resetAt) {
++    bucket.count = 0;
++    bucket.resetAt = now + windowMs;
++  }
++
++  bucket.count += 1;
++  buckets.set(key, bucket);
++
++  if (bucket.count > limit) {
++    const retryAfterMs = bucket.resetAt - now;
++    return { allowed: false, retryAfterMs };
++  }
++
++  return { allowed: true };
++}
++
+*** End File
+*** Update File: app/api/Login/route.js
+@@
+-import testConnect from "@/testConnect/page";
+-import User from "@/model/UserLogin/page";
+-import CryptoJS from "crypto-js";
+-import jwt from "jsonwebtoken";
++import testConnect from "@/testConnect/page";
++import User from "@/model/UserLogin/page";
++import CryptoJS from "crypto-js";
++import jwt from "jsonwebtoken";
++import { rateLimit } from "@/utils/rateLimiter";
+@@
+-export const POST = testConnect(async (req) => {
+-    try {
+-        const body = await req.json();
++export const POST = testConnect(async (req) => {
++    try {
++        const ip = req.headers.get("x-forwarded-for") || "unknown";
++        const rl = rateLimit(login:${ip}, { limit: 5, windowMs: 5 * 60 * 1000 });
++        if (!rl.allowed) {
++            return new Response(
++                JSON.stringify({ success: false, message: "Too many requests, try again later" }),
++                { status: 429, headers: { "Content-Type": "application/json" } }
++            );
++        }
++
++        const body = await req.json();
+*** End Patch
+*** Update File: app/api/LoginNew/route.js
+@@
+-import testConnect from "@/testConnect/page";
+-import User from "@/model/UserLogin/page";
+-import CryptoJS from "crypto-js";
+-var jwt = require('jsonwebtoken');
+-
+-export const POST = testConnect(async (req, res) => {
+-    const body = await req.json();
++import testConnect from "@/testConnect/page";
++import User from "@/model/UserLogin/page";
++import CryptoJS from "crypto-js";
++var jwt = require('jsonwebtoken');
++import { rateLimit } from "@/utils/rateLimiter";
++
++export const POST = testConnect(async (req, res) => {
++    const ip = req.headers.get("x-forwarded-for") || "unknown";
++    const rl = rateLimit(signup:${ip}, { limit: 3, windowMs: 10 * 60 * 1000 });
++    if (!rl.allowed) {
++        return new Response(
++            JSON.stringify({ success: false, message: "Too many requests, try again later" }),
++            { status: 429, headers: { "Content-Type": "application/json" } }
++        );
++    }
++
++    const body = await req.json();
+*** End Patch
+*** Update File: app/api/varificationMail/route.js
+@@
+-import nodemailer from "nodemailer";
+-
+-export async function POST(request) {
+-  try {
+-    const { email, text,subject } = await request.json();
++import nodemailer from "nodemailer";
++import { rateLimit } from "@/utils/rateLimiter";
++
++export async function POST(request) {
++  try {
++    const { email, text, subject } = await request.json();
++
++    const normalizedEmail = (email || "").toLowerCase();
++    const rl = rateLimit(otp:${normalizedEmail}, { limit: 5, windowMs: 15 * 60 * 1000 });
++    if (!rl.allowed) {
++      return new Response(
++        JSON.stringify({ success: false, message: "Too many requests, try again later" }),
++        { status: 429 }
++      );
++    }
+@@
+-    if (!email || !text) {
++    if (!email || !text) {
+*** End Patch
+*** Update File: app/api/userforgot/route.js
+@@
+-import testConnect from "@/testConnect/page";
+-import User from "@/model/UserLogin/page";
+-import CryptoJS from "crypto-js";
+-
+-export const POST = testConnect(async (req, res) => {
+-  try {
+-    const body = await req.json();
++import testConnect from "@/testConnect/page";
++import User from "@/model/UserLogin/page";
++import CryptoJS from "crypto-js";
++import { rateLimit } from "@/utils/rateLimiter";
++
++export const POST = testConnect(async (req, res) => {
++  try {
++    const body = await req.json();
++
++    const normalizedEmail = (body.email || "").toLowerCase();
++    const rl = rateLimit(forgot:${normalizedEmail}, { limit: 5, windowMs: 15 * 60 * 1000 });
++    if (!rl.allowed) {
++      return new Response(
++        JSON.stringify({ success: false, message: "Too many requests, try again later" }),
++        { status: 429, headers: { "Content-Type": "application/json" } }
++      );
++    }
+*** End Patch

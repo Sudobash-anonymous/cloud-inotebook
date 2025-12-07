@@ -1,0 +1,50 @@
+task_description: |
+  task-02
+
+  Problem:
+  The project currently exposes sensitive secrets in multiple unsafe ways:
+  - .env file is used directly without validation at startup
+  - Secrets are passed via Docker ARG and ENV (leaks into image layers)
+  - No runtime validation for required secrets
+  - Application can boot with missing or weak secrets
+  - JWT and password encryption secrets are dangerously weak
+  - Docker image permanently embeds secrets
+
+  This creates:
+  - Severe credential leakage risk
+  - Irreversible docker layer exposure
+  - Broken production security guarantees
+  - Undetectable misconfiguration in staging/prod
+
+  Requirements:
+  1. Remove ALL secrets from Dockerfile ARG and ENV.
+  2. Implement strict runtime env validation with a schema.
+  3. App must FAIL HARD on startup if required env is missing.
+  4. Secrets must ONLY be injected at:
+     - docker run time
+     - docker-compose runtime
+     - Vercel dashboard
+  5. Enforce strong minimum secret entropy:
+     - PASSWORD_SECRET_ ≥ 16 chars
+     - JWT_SECRET_ ≥ 24 chars
+  6. Mask secrets in all logs.
+  7. Prevent accidental git commits of secrets.
+  8. .env.example must be generated as template.
+  9. Build must succeed with NO secrets available.
+  10. Runtime must crash instantly if secrets are absent.
+
+  Success Criteria:
+  - No secrets appear in docker image layers
+  - App crashes on missing secrets
+  - .env.example exists
+  - .gitignore blocks .env
+  - Docker build works with empty env
+  - Tests enforce full validation
+  - Secrets never appear in logs
+
+author_name: Faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: hard
+category: Security
+tags: [docker, env, security, nextjs, secrets]
+parser_name: pytest

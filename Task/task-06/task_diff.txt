@@ -1,0 +1,447 @@
+*** Begin Patch
+*** Add File: utils/redisClient.js
++import { createClient } from "redis";
++
++let client;
++
++export function getRedisClient() {
++  if (!client) {
++    client = createClient({
++      url: process.env.REDIS_URL || "redis://redis:6379",
++    });
++
++    client.on("error", (err) => {
++      console.error("Redis error:", err.message);
++    });
++
++    client.connect().catch((err) => {
++      console.error("Redis connect error:", err.message);
++    });
++  }
++
++  return client;
++}
++
+*** End File
+*** Update File: app/api/fetchtextcloud/route.js
+@@
+-import testConnect from "@/testConnect/page";
+-import Contact from "@/model/text/page"; // Your schema
++import testConnect from "@/testConnect/page";
++import Contact from "@/model/text/page";
++import { getRedisClient } from "@/utils/redisClient";
+@@
+   try {
+     await testConnect();
+ 
+     const body = await req.json();
+     const { email } = body;
+@@
+-    // 🔍 Fetch all messages by email
+-const messages = await Contact.find({ email }).sort({ createdAt: -1 });
+-
+-    // ❗Optional: Handle case where no messages are found
+-    if (messages.length === 0) {
+-      return new Response(JSON.stringify({ message: "No data found for this email." }), {
+-        status: 404,
+-        headers: { "Content-Type": "application/json" },
+-      });
+-    }
+-
+-    // ✅ Return the messages
+-    return new Response(JSON.stringify({ success: true, data: messages }), {
+-      status: 200,
+-      headers: { "Content-Type": "application/json" },
+-    });
++    const { searchParams } = new URL(req.url);
++    let page = parseInt(searchParams.get("page") || "1", 10);
++    let limit = parseInt(searchParams.get("limit") || "10", 10);
++
++    if (isNaN(page) || page < 1) page = 1;
++    if (isNaN(limit) || limit < 1) limit = 10;
++    if (limit > 50) limit = 50;
++
++    const skip = (page - 1) * limit;
++
++    const redis = getRedisClient();
++    const cacheKey = text:${email}:page:${page}:limit:${limit};
++    const cached = await redis.get(cacheKey);
++
++    if (cached) {
++      return new Response(cached, {
++        status: 200,
++        headers: { "Content-Type": "application/json" },
++      });
++    }
++
++    const [total, messages] = await Promise.all([
++      Contact.countDocuments({ email }),
++      Contact.find({ email })
++        .sort({ createdAt: -1 })
++        .skip(skip)
++        .limit(limit)
++        .lean(),
++    ]);
++
++    const totalPages = Math.ceil(total / limit) || 1;
++
++    const payload = JSON.stringify({
++      success: true,
++      data: messages,
++      pagination: {
++        page,
++        pageSize: limit,
++        total,
++        totalPages,
++      },
++    });
++
++    await redis.set(cacheKey, payload, { EX: 60 });
++
++    return new Response(payload, {
++      status: 200,
++      headers: { "Content-Type": "application/json" },
++    });
+@@
+-    return new Response(JSON.stringify({ error: "Failed to fetch data", details: err.message }), {
++    return new Response(JSON.stringify({ error: "Failed to fetch data", details: err.message }), {
+       status: 500,
+       headers: { "Content-Type": "application/json" },
+     });
+   }
+ }
+*** End Patch
+*** Update File: app/api/fetchemail/route.js
+@@
+-import { NextResponse } from "next/server";
+-import Upload from "@/model/image/page";
+-import dbConnect from "@/testConnect/page";
++import { NextResponse } from "next/server";
++import Upload from "@/model/image/page";
++import dbConnect from "@/testConnect/page";
++import { getRedisClient } from "@/utils/redisClient";
+@@
+-  await dbConnect();
+-
+-  const email = req.nextUrl.searchParams.get("email");
+-  if (!email) {
+-    return NextResponse.json({ success: false, message: "Email is required" }, { status: 400 });
+-  }
+-
+-const files = await Upload.find({ email }).sort({ createdAt: -1 });
+-
+-  const result = files.map((f) => ({
+-    id: f._id,
+-    originalName: f.file.originalName,
+-    contentType: f.file.contentType,
+-    base64: data:${f.file.contentType};base64,${f.file.data.toString("base64")},
+-  }));
+-
+-  return NextResponse.json({ success: true, uploads: result });
++  await dbConnect();
++
++  const { searchParams } = req.nextUrl;
++  const email = searchParams.get("email");
++  if (!email) {
++    return NextResponse.json(
++      { success: false, message: "Email is required" },
++      { status: 400 }
++    );
++  }
++
++  let page = parseInt(searchParams.get("page") || "1", 10);
++  let limit = parseInt(searchParams.get("limit") || "10", 10);
++
++  if (isNaN(page) || page < 1) page = 1;
++  if (isNaN(limit) || limit < 1) limit = 10;
++  if (limit > 50) limit = 50;
++
++  const skip = (page - 1) * limit;
++
++  const redis = getRedisClient();
++  const cacheKey = email:${email}:page:${page}:limit:${limit};
++  const cached = await redis.get(cacheKey);
++
++  if (cached) {
++    return NextResponse.json(JSON.parse(cached), { status: 200 });
++  }
++
++  const [total, files] = await Promise.all([
++    Upload.countDocuments({ email }),
++    Upload.find({ email })
++      .sort({ createdAt: -1 })
++      .skip(skip)
++      .limit(limit)
++      .select({
++        "file.originalName": 1,
++        "file.contentType": 1,
++        createdAt: 1,
++      })
++      .lean(),
++  ]);
++
++  const totalPages = Math.ceil(total / limit) || 1;
++
++  const uploads = files.map((f) => ({
++    id: f._id,
++    originalName: f.file.originalName,
++    contentType: f.file.contentType,
++    createdAt: f.createdAt,
++  }));
++
++  const payload = {
++    success: true,
++    uploads,
++    pagination: {
++      page,
++      pageSize: limit,
++      total,
++      totalPages,
++    },
++  };
++
++  await redis.set(cacheKey, JSON.stringify(payload), { EX: 60 });
++
++  return NextResponse.json(payload, { status: 200 });
+*** End Patch
+*** Update File: app/api/fetchimg/route.js
+@@
+-import dbConnect from "@/testConnect/page";
+-import Upload from "@/model/image/page"; // ✅ required for using Upload.find()
+-import { NextResponse } from "next/server";
+-
+-export async function GET(req) {
+-  await dbConnect(); // ✅ ensure MongoDB is connected
+-
+-  const email = req.nextUrl.searchParams.get("email");
+-
+-  if (!email) {
+-    return NextResponse.json({ success: false, message: "Email is required" }, { status: 400 });
+-  }
+-
+-  try {
+-    const uploads = await Upload.find({ email });
+-
+-    const formatted = uploads.map((item) => ({
+-      id: item._id,
+-      originalName: item.file.originalName,
+-      contentType: item.file.contentType,
+-    }));
+-
+-    return NextResponse.json({ success: true, uploads: formatted });
+-  } catch (error) {
+-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+-  }
+-}
++import dbConnect from "@/testConnect/page";
++import Upload from "@/model/image/page";
++import { NextResponse } from "next/server";
++import { getRedisClient } from "@/utils/redisClient";
++
++export async function GET(req) {
++  await dbConnect();
++
++  const email = req.nextUrl.searchParams.get("email");
++
++  if (!email) {
++    return NextResponse.json(
++      { success: false, message: "Email is required" },
++      { status: 400 }
++    );
++  }
++
++  const redis = getRedisClient();
++  const cacheKey = img:${email};
++  const cached = await redis.get(cacheKey);
++
++  if (cached) {
++    return NextResponse.json(JSON.parse(cached), { status: 200 });
++  }
++
++  try {
++    const uploads = await Upload.find({ email })
++      .select({
++        "file.originalName": 1,
++        "file.contentType": 1,
++        createdAt: 1,
++      })
++      .lean();
++
++    const formatted = uploads.map((item) => ({
++      id: item._id,
++      originalName: item.file.originalName,
++      contentType: item.file.contentType,
++      createdAt: item.createdAt,
++    }));
++
++    const payload = { success: true, uploads: formatted };
++
++    await redis.set(cacheKey, JSON.stringify(payload), { EX: 60 });
++
++    return NextResponse.json(payload, { status: 200 });
++  } catch (error) {
++    return NextResponse.json(
++      { success: false, message: error.message },
++      { status: 500 }
++    );
++  }
++}
+*** End Patch
+*** Update File: app/api/textcloud/route.js
+@@
+-import testConnect from "@/testConnect/page";
+-import Contact from "@/model/text/page"; // Adjust if needed
++import testConnect from "@/testConnect/page";
++import Contact from "@/model/text/page";
++import { getRedisClient } from "@/utils/redisClient";
+@@
+-    const newMessage = await Contact.create({ subject, tag, message, email });
++    const newMessage = await Contact.create({ subject, tag, message, email });
++
++    const redis = getRedisClient();
++    await redis.del(text:${email});
++    await redis.del(email:${email});
++    await redis.del(img:${email});
+*** End Patch
+*** Update File: app/api/deletetextcloud/route.js
+@@
+-import mongoose from "mongoose";
+-import testConnect from "@/testConnect/page";
+-import Contact from "@/model/text/page"; // your schema
++import mongoose from "mongoose";
++import testConnect from "@/testConnect/page";
++import Contact from "@/model/text/page";
++import { getRedisClient } from "@/utils/redisClient";
+@@
+-    await Contact.deleteOne({ _id });
++    await Contact.deleteOne({ _id });
++
++    const redis = getRedisClient();
++    await redis.del(text:${email});
++    await redis.del(email:${email});
++    await redis.del(img:${email});
+*** End Patch
+*** Update File: app/api/addimage/route.js
+@@
+-import { NextResponse } from "next/server";
+-import Upload from "@/model/image/page";
+-import dbConnect from "@/testConnect/page";
+-
+-export async function POST(req) {
+-  await dbConnect();
+-
+-  const formData = await req.formData();
+-  const email = formData.get("email");
+-  const file = formData.get("file");
+-
+-  if (!email || !file) {
+-    return NextResponse.json({ success: false, message: "Email and file are required" }, { status: 400 });
+-  }
+-
+-  const buffer = Buffer.from(await file.arrayBuffer());
+-
+-  const newUpload = new Upload({
+-    email,
+-    file: {
+-      data: buffer,
+-      contentType: file.type,
+-      originalName: file.name,
+-    },
+-  });
+-
+-  await newUpload.save();
+-
+-  return NextResponse.json({ success: true, id: newUpload._id });
+-}
++import { NextResponse } from "next/server";
++import Upload from "@/model/image/page";
++import dbConnect from "@/testConnect/page";
++import { getRedisClient } from "@/utils/redisClient";
++
++export async function POST(req) {
++  await dbConnect();
++
++  const formData = await req.formData();
++  const email = formData.get("email");
++  const file = formData.get("file");
++
++  if (!email || !file) {
++    return NextResponse.json(
++      { success: false, message: "Email and file are required" },
++      { status: 400 }
++    );
++  }
++
++  const buffer = Buffer.from(await file.arrayBuffer());
++
++  const newUpload = new Upload({
++    email,
++    file: {
++      data: buffer,
++      contentType: file.type,
++      originalName: file.name,
++    },
++  });
++
++  await newUpload.save();
++
++  const redis = getRedisClient();
++  await redis.del(text:${email});
++  await redis.del(email:${email});
++  await redis.del(img:${email});
++
++  return NextResponse.json({ success: true, id: newUpload._id });
++}
+*** End Patch
+*** Update File: app/api/deleteimage/route.js
+@@
+-import { NextResponse } from "next/server";
+-import Upload from "@/model/image/page";
+-import dbConnect from "@/testConnect/page";
++import { NextResponse } from "next/server";
++import Upload from "@/model/image/page";
++import dbConnect from "@/testConnect/page";
++import { getRedisClient } from "@/utils/redisClient";
+@@
+-  await dbConnect();
+-
+-  const { email, id } = await req.json();
++  await dbConnect();
++
++  const { email, id } = await req.json();
+@@
+-  await Upload.findByIdAndDelete(id);
+-
+-  return NextResponse.json({ success: true, message: "File deleted successfully" });
++  await Upload.findByIdAndDelete(id);
++
++  const redis = getRedisClient();
++  await redis.del(text:${email});
++  await redis.del(email:${email});
++  await redis.del(img:${email});
++
++  return NextResponse.json({
++    success: true,
++    message: "File deleted successfully",
++  });
+*** End Patch
+*** Add File: docker-compose.yaml
++version: "3.8"
++
++services:
++  app:
++    build: .
++    container_name: cloud-notebook-app
++    ports:
++      - "3000:3000"
++    env_file:
++      - .env
++    depends_on:
++      - redis
++
++  redis:
++    image: redis:7
++    container_name: cloud-notebook-redis
++    ports:
++      - "6379:6379"
+*** End Patch

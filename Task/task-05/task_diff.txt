@@ -1,0 +1,44 @@
+*** Update File: app/api/useremail/route.js
+@@
+-import Order from "@/model/UserLogin/page";
+-import jwt from "jsonwebtoken";
++import Order from "@/model/UserLogin/page";
++import jwt from "jsonwebtoken";
++import testConnect from "@/testConnect/page";
+@@
+-export const POST = async (req) => {
++export const POST = testConnect(async (req) => {
+   try {
+-    const token = req.headers.get("token");
++    const auth = req.headers.get("authorization");
++    if (!auth || !auth.startsWith("Bearer ")) {
++      return new Response(JSON.stringify({
++        success: false,
++        message: "Unauthorized"
++      }), { status: 401 });
++    }
++
++    const token = auth.replace("Bearer ", "");
+ 
+     if (!token) {
+@@
+-    let decoded;
++    let decoded;
+     try {
+       decoded = jwt.verify(token, process.env.JWT_SECRET_);
+     } catch (err) {
+       return new Response(JSON.stringify({
+-        success: false,
+-        message: "Token expired or invalid",
++        success: false,
++        message: "Invalid or expired token",
+       }), {
+         status: 401,
+       });
+     }
+ 
+-    const orders = await Order.find({ email: decoded.email });
++    const orders = await Order.find({ email: decoded.email });
+ 
+     return new Response(JSON.stringify({
+*** End Patch

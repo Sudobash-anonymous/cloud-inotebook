@@ -1,0 +1,76 @@
+task_description: |
+  task-03
+
+  Title:
+  Centralize JWT Authentication and Protect All Sensitive API Routes
+
+  Problem:
+  The current authentication model is ad-hoc and fragile:
+  - Each API route manually reads and verifies JWT tokens (or doesn't verify at all).
+  - Some routes trust client-provided email in the request body/query.
+  - Token verification logic is duplicated and inconsistent across routes.
+  - There is no centralized auth helper or middleware.
+  - Error handling for invalid/missing tokens is inconsistent and weak.
+  - APIs that manipulate user-owned resources (text, images, email-based data) are not strongly bound to the authenticated user.
+
+  This leads to:
+  - Potential privilege escalation (user can pass someone else's email).
+  - Inconsistent error messages and status codes.
+  - Difficult future maintenance.
+  - Higher chance of security bugs when adding new routes.
+
+  Requirements:
+  1. Create a centralized auth helper module (e.g. lib/auth.js) that:
+     - Exposes verifyToken(token) to validate and decode JWT.
+     - Exposes requireAuth(req) that:
+       - Extracts token from headers (Authorization: Bearer <token> OR "token" header).
+       - Validates token using JWT_SECRET_.
+       - On success returns a normalized user payload: { id, email, name }.
+       - On failure throws a clear, consistent error.
+
+  2. Refactor all sensitive API routes to use this centralized helper:
+     At minimum:
+     - app/api/useremail/route.js
+     - app/api/textcloud/route.js
+     - app/api/addimage/route.js
+
+     Rules:
+     - These routes must NOT trust email from request body or query string.
+     - Email must always come from the verified token payload.
+     - Responses must use consistent JSON shape on auth error:
+       { success: false, message: "Invalid or expired token" }
+
+  3. Ensure backward compatibility for token format:
+     - Login/LoginNew must still issue tokens with at least { email, name }.
+     - Auth helper must work with existing token shape used in the app.
+
+  4. Standardize status codes:
+     - Missing/invalid token → 401
+     - Authenticated but forbidden (not owner, if applicable) → 403
+     - Other server errors → 500
+
+  5. Logging & Security:
+     - Never log raw token.
+     - Never log full decoded payload.
+     - Logging allowed only for error type (e.g. "Auth error: invalid token").
+
+  6. Code impact:
+     - Must touch at least 3+ files:
+       - New centralized auth helper
+       - Multiple API routes refactored
+       - Optional small change in login route if needed to ensure token payload consistency.
+
+  Success Criteria:
+  - All sensitive routes derive email/user identity ONLY from the JWT, not from request body.
+  - No route reads raw email from client when authentication is required.
+  - Centralized helper (lib/auth.js) exists and is used by the routes listed above.
+  - Error messages and status codes are consistent across protected routes.
+  - All tests in task/task-03/task_tests.py pass.
+  - Existing login/signup flow still issues valid tokens and works end-to-end.
+
+author_name: Faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: hard
+category: Feature
+tags: [nextjs, jwt, security, api, backend]
+parser_name: pytest

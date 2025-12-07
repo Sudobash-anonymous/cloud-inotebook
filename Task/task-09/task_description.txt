@@ -1,0 +1,74 @@
+task_description: |
+  task-09
+
+  Title:
+  Implement Global Audit Log System for Critical API Actions
+
+  Problem:
+  The application currently has:
+  - No visibility into who performed actions
+  - No tracking of security-sensitive operations
+  - No forensic trail for debugging or abuse detection
+
+  This makes:
+  - Security incidents untraceable
+  - Admin investigation impossible
+  - Compliance impossible in real production
+
+  Requirements:
+
+  1. Create a new AuditLog model:
+     Fields:
+     - action (string)
+     - userEmail (string)
+     - ipAddress (string)
+     - userAgent (string)
+     - createdAt (date, auto)
+
+  2. Create a centralized logger:
+     - File: utils/auditLogger.js
+     - Export function: logAudit({ action, userEmail, req })
+
+  3. Mandatory logging for these APIs:
+     - /api/Login        → action: "LOGIN_SUCCESS"
+     - /api/LoginNew     → action: "SIGNUP"
+     - /api/textcloud   → action: "CREATE_TEXT"
+     - /api/addimage    → action: "UPLOAD_IMAGE"
+     - /api/deleteimage → action: "DELETE_IMAGE"
+     - /api/deletetextcloud → action: "DELETE_TEXT"
+
+  4. Capture from req:
+     - IP address
+     - User-Agent
+
+  5. Logging must:
+     - NEVER block the main API response
+     - Be wrapped in try/catch
+
+  6. New admin fetch API:
+     - GET /api/auditlogs
+     - Returns latest 100 logs sorted by newest first
+
+  Files affected (minimum):
+  - model/AuditLog/page.js
+  - utils/auditLogger.js
+  - app/api/Login/route.js
+  - app/api/LoginNew/route.js
+  - app/api/textcloud/route.js
+  - app/api/addimage/route.js
+  - app/api/deleteimage/route.js
+  - app/api/deletetextcloud/route.js
+  - app/api/auditlogs/route.js
+
+  Success Criteria:
+  ✅ Every listed API writes audit logs
+  ✅ Admin API returns last 100 logs
+  ✅ Logging never blocks API responses
+  ✅ Tests must pass
+
+author_name: faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: hard
+category: Observability
+tags: [audit, logging, security, api]
+parser_name: pytest

@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  app:
+    image: cloud-notebook
+    container_name: cloud-notebook-task05
+    ports:
+      - "3000:3000"
+    env_file:
+      - ../../.env
+    restart: always

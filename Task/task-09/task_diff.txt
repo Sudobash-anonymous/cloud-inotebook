@@ -1,0 +1,82 @@
+*** Add File: model/AuditLog/page.js
++import mongoose from "mongoose";
++
++const AuditSchema = new mongoose.Schema({
++  action: String,
++  userEmail: String,
++  ipAddress: String,
++  userAgent: String,
++  createdAt: { type: Date, default: Date.now },
++});
++
++export default mongoose.models.AuditLog || mongoose.model("AuditLog", AuditSchema);
+
+*** Add File: utils/auditLogger.js
++import AuditLog from "@/model/AuditLog/page";
++
++export async function logAudit({ action, userEmail, req }) {
++  try {
++    const ip = req.headers.get("x-forwarded-for") || "unknown";
++    const ua = req.headers.get("user-agent") || "unknown";
++
++    await AuditLog.create({
++      action,
++      userEmail: userEmail || "system",
++      ipAddress: ip,
++      userAgent: ua,
++    });
++  } catch (err) {
++    console.error("Audit log failed:", err.message);
++  }
++}
+
+*** Update File: app/api/Login/route.js
+@@
++import { logAudit } from "@/utils/auditLogger";
+@@
++await logAudit({ action: "LOGIN_SUCCESS", userEmail: user.email, req });
+
+*** Update File: app/api/LoginNew/route.js
+@@
++import { logAudit } from "@/utils/auditLogger";
+@@
++await logAudit({ action: "SIGNUP", userEmail: body.email, req });
+
+*** Update File: app/api/textcloud/route.js
+@@
++import { logAudit } from "@/utils/auditLogger";
+@@
++await logAudit({ action: "CREATE_TEXT", userEmail: email, req });
+
+*** Update File: app/api/addimage/route.js
+@@
++import { logAudit } from "@/utils/auditLogger";
+@@
++await logAudit({ action: "UPLOAD_IMAGE", userEmail: email, req });
+
+*** Update File: app/api/deleteimage/route.js
+@@
++import { logAudit } from "@/utils/auditLogger";
+@@
++await logAudit({ action: "DELETE_IMAGE", userEmail: email, req });
+
+*** Update File: app/api/deletetextcloud/route.js
+@@
++import { logAudit } from "@/utils/auditLogger";
+@@
++await logAudit({ action: "DELETE_TEXT", userEmail: email, req });
+
+*** Add File: app/api/auditlogs/route.js
++import AuditLog from "@/model/AuditLog/page";
++import testConnect from "@/testConnect/page";
++
++export const GET = testConnect(async () => {
++  const logs = await AuditLog.find({})
++    .sort({ createdAt: -1 })
++    .limit(100);
++
++  return new Response(JSON.stringify({ success: true, data: logs }), {
++    status: 200,
++    headers: { "Content-Type": "application/json" },
++  });
++});

@@ -1,0 +1,114 @@
+task_description: |
+  task-04
+
+  Title:
+  Optimize Text/Image Fetch APIs with Proper Pagination and Lightweight Responses
+
+  Problem:
+  The current implementation of text and image fetch APIs is naive and inefficient:
+
+  - /api/fetchemail:
+    * Loads all image documents for a user in one query.
+    * Embeds the full binary data as base64 in every response.
+    * No pagination, no limit, no total count.
+    * Will explode in memory and network cost for users with many images.
+
+  - /api/fetchtextcloud:
+    * Returns all text records for a user with no pagination or limit.
+    * No total count, no pagination metadata.
+    * Cannot be used efficiently in any real UI once data grows.
+
+  - /api/fetchimg:
+    * Fetches all uploads but does not use lean queries or projected fields.
+    * Wastes memory by pulling entire Mongoose documents when only a subset is needed.
+
+  This leads to:
+  - Extremely poor performance on large datasets.
+  - High memory and bandwidth usage.
+  - No way to build scalable UI pagination.
+  - Increased risk of timeouts and crashes in production.
+
+  Requirements:
+
+  1. Implement server-side pagination for:
+     - /api/fetchtextcloud
+     - /api/fetchemail
+
+     Using:
+     - Query parameters:
+       * page (1-based, default: 1)
+       * limit (default: 10, max: 50)
+     - The route must return:
+       {
+         success: true,
+         data: [...],
+         pagination: {
+           page: number,
+           pageSize: number,
+           total: number,
+           totalPages: number
+         }
+       }
+
+  2. Split heavy binary payload from the metadata listing:
+     - /api/fetchemail must become a "lightweight listing" endpoint:
+       * It must NOT include base64 image data anymore.
+       * It should only return minimal metadata:
+         - id
+         - originalName
+         - contentType
+         - createdAt (if available)
+       * It must support pagination + total count.
+
+     - Create a new endpoint:
+       - /api/fetchemailDetail
+       - Accepts image id (e.g. via query param ?id=...)
+       - Returns the single full base64 payload for that image:
+         {
+           success: true,
+           id,
+           originalName,
+           contentType,
+           base64
+         }
+
+  3. Optimize /api/fetchimg:
+     - Use lean() queries or field projections to avoid loading unnecessary data.
+     - Return only id, originalName, contentType, createdAt (if available).
+     - Ensure it does not accidentally load the full binary buffer into memory.
+
+  4. Input validation:
+     - If page or limit is invalid (non-number, < 1, > max), gracefully normalize:
+       * page < 1 → page = 1
+       * limit < 1 → limit = default
+       * limit > max → limit = max
+
+  5. Error Handling:
+     - For invalid/missing id in /api/fetchemailDetail → respond with:
+       status: 400, JSON: { success: false, message: "Image id is required" }
+     - For not found image id → respond with:
+       status: 404, JSON: { success: false, message: "Image not found" }
+     - For all internal errors → status: 500, JSON: { success: false, message: "Internal server error" }
+
+  6. Code impact:
+     - Must modify at least:
+       - app/api/fetchemail/route.js
+       - app/api/fetchtextcloud/route.js
+       - app/api/fetchimg/route.js
+     - Must add:
+       - app/api/fetchemailDetail/route.js
+
+  Success Criteria:
+  - /api/fetchtextcloud uses proper pagination and returns metadata as described.
+  - /api/fetchemail returns only lightweight metadata list with pagination.
+  - /api/fetchemailDetail returns a single image in base64 when requested by id.
+  - /api/fetchimg uses lean() or projection and does NOT contain base64 conversion logic.
+  - All tests in task/task-04/task_tests.py pass.
+  - The solution remains compatible with existing Mongo schemas.
+
+author_name: Faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: hard
+category: Performance
+tags: [nextjs, api, mongoose, performance, pagination]
+parser_name: pytest

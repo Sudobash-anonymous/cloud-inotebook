@@ -1,0 +1,41 @@
+*** Add File: utils/apiVersionGuard.js
++export function apiVersionGuard(version) {
++  const supported = ["v1"];
++  if (!supported.includes(version)) {
++    throw new Error("API version no longer supported");
++  }
++}
+
+*** Add Directory: app/api/v1/Login
+*** Add File: app/api/v1/Login/route.js
++import { apiVersionGuard } from "@/utils/apiVersionGuard";
++import originalHandler from "@/app/api/Login/logic";
++
++export async function POST(req) {
++  apiVersionGuard("v1");
++  const res = await originalHandler(req);
++  res.headers.set("X-API-Version", "v1");
++  return res;
++}
+
+*** Update File: app/api/Login/route.js
+@@
+-export async function POST(req) {
+-  ...
+-}
++export async function POST(req) {
++  const res = await fetch("/api/v1/Login", {
++    method: "POST",
++    body: await req.text(),
++    headers: req.headers,
++  });
++
++  const data = await res.text();
++  return new Response(data, {
++    status: res.status,
++    headers: {
++      "X-API-DEPRECATED": "true",
++      "Content-Type": "application/json",
++    },
++  });
++}

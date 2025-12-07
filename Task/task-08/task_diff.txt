@@ -1,0 +1,44 @@
+*** Update File: model/text/page.js
+@@
++createdAt: { type: Date, default: Date.now },
++updatedAt: { type: Date, default: Date.now },
++deletedAt: { type: Date, default: null },
+
+*** Update File: model/image/page.js
+@@
++createdAt: { type: Date, default: Date.now },
++updatedAt: { type: Date, default: Date.now },
++deletedAt: { type: Date, default: null },
+
+*** Update File: app/api/deleteimage/route.js
+@@
+- await Upload.findByIdAndDelete(id);
++ await Upload.findByIdAndUpdate(id, { deletedAt: new Date() });
+
+*** Update File: app/api/deletetextcloud/route.js
+@@
+- await Contact.deleteOne({ _id });
++ await Contact.findByIdAndUpdate(_id, { deletedAt: new Date() });
+
+*** Update File: app/api/fetchtextcloud/route.js
+@@
+- const messages = await Contact.find({ email })
++ const messages = await Contact.find({ email, deletedAt: null })
+
+*** Update File: app/api/fetchimg/route.js
+@@
+- const uploads = await Upload.find({ email })
++ const uploads = await Upload.find({ email, deletedAt: null })
+
+*** Update File: app/api/addimage/route.js
+@@
+- const newUpload = new Upload({
++ const newUpload = new Upload({
+     email,
+     file,
++    updatedAt: new Date()
+   });
+
+*** Update File: app/api/edittextcloud/route.js
+@@
+ record.updatedAt = new Date();

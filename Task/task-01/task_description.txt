@@ -1,0 +1,48 @@
+task_description: |
+  task-01
+
+  Problem:
+  The backend MongoDB connection system is unstable across environments.
+  The app behaves differently in:
+  - npm run dev
+  - npm run build
+  - npm start
+  - Docker build
+  - Docker runtime
+
+  Current failures include:
+  - Mongoose buffering timed out errors
+  - Server crashing silently when MONGODB_URI is missing
+  - testConnect being misused as both middleware and direct function
+  - API routes inconsistently handling DB connection failures
+  - Docker builds failing because Next.js executes API routes during build
+  - No centralized DB connection validation
+
+  Requirements:
+  1. Refactor database connection into a single safe, idempotent connector.
+  2. Prevent build-time crashes when env variables are missing.
+  3. Ensure runtime throws a hard error if DB connection fails.
+  4. All API routes must use the same database connector.
+  5. Remove deprecated handler-style middleware usage.
+  6. Ensure stable behavior in:
+     - npm run dev
+     - npm run build
+     - npm start
+     - docker build
+     - docker run
+  7. Mongoose buffering timeout must never occur.
+
+  Success Criteria:
+  - All API routes connect to DB reliably
+  - Build never crashes due to DB/env issues
+  - Missing env produces readable error
+  - No "buffering timed out" error exists
+  - All tests pass
+  - Docker build succeeds without runtime env present
+
+author_name: Faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: hard
+category: Bug Resolution
+tags: [nextjs, mongoose, api, docker, backend]
+parser_name: pytest

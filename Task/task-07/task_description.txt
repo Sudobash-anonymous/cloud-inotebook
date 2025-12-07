@@ -1,0 +1,81 @@
+task_description: |
+  task-07
+
+  Title:
+  Add Rate Limiting and Brute Force Protection to Auth & OTP APIs
+
+  Problem:
+  The authentication-related APIs are currently vulnerable to brute-force and abuse:
+  - /api/Login can be spammed with password attempts.
+  - /api/LoginNew (signup) can be abused to spam account creation.
+  - /api/varificationMail (OTP / email sending) can be spammed for email bombing.
+  - /api/userforgot (reset password) can be abused for reset flooding.
+
+  There is:
+  - No per-IP or per-identity rate limiting.
+  - No centralized rate-limiting utility.
+  - No standardized error response when the limit is exceeded.
+
+  Requirements:
+
+  1. Implement a centralized rate limiter:
+     - File: utils/rateLimiter.js
+     - Export: rateLimit(key, options)
+     - Behavior:
+       * key: string (e.g. "login:<ip>", "otp:<email>")
+       * options:
+           - limit: max requests allowed in window
+           - windowMs: time window in milliseconds
+       * If under limit → allow (return { allowed: true })
+       * If over limit → return { allowed: false, retryAfterMs }
+
+  2. Apply rate limiting to these routes:
+     - /api/Login:
+       * Key: login:<ip>
+       * limit: 5
+       * window: 5 minutes
+     - /api/LoginNew:
+       * Key: signup:<ip>
+       * limit: 3
+       * window: 10 minutes
+     - /api/varificationMail:
+       * Key: otp:<normalizedEmail>
+       * limit: 5
+       * window: 15 minutes
+     - /api/userforgot:
+       * Key: forgot:<normalizedEmail>
+       * limit: 5
+       * window: 15 minutes
+
+  3. When limit exceeded:
+     - Response:
+       status: 429
+       body: { success: false, message: "Too many requests, try again later" }
+
+  4. Normalization:
+     - Email keys must use lower-cased email.
+
+  5. No external dependencies:
+     - Implement in-memory rate limiting using a simple Map.
+     - No Redis / no third-party libs.
+
+  6. Modified files (minimum):
+     - utils/rateLimiter.js (new)
+     - app/api/Login/route.js
+     - app/api/LoginNew/route.js
+     - app/api/varificationMail/route.js
+     - app/api/userforgot/route.js
+
+  Success Criteria:
+  - All four routes call rateLimit() with appropriate keys.
+  - Exceeded requests return 429 with the exact message string:
+    "Too many requests, try again later".
+  - Emails are normalized to lowercase for keys.
+  - Tests in task/task-07/task_tests.py pass.
+
+author_name: Faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: medium
+category: Security
+tags: [rate-limit, auth, security, api]
+parser_name: pytest

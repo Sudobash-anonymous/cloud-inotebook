@@ -1,0 +1,63 @@
+task_description: |
+  task-10
+
+  Title:
+  Implement Full API Versioning with Deprecation Guard
+
+  Problem:
+  All APIs currently live under /api/* with:
+  - No version control
+  - No backward compatibility
+  - No safe upgrade mechanism
+  - High risk of breaking production clients
+
+  Requirements:
+
+  1. Introduce API Versioning:
+     - Current APIs must become:
+       /api/v1/*
+
+  2. Old /api/* routes:
+     - Must remain functional temporarily
+     - Must return a deprecation warning header:
+       "X-API-DEPRECATED: true"
+
+  3. Implement a version router/middleware:
+     - File: utils/apiVersionGuard.js
+     - Responsibilities:
+       - Detect API version from URL
+       - Block unknown versions (v3, v99, etc.)
+       - Return:
+         status: 410
+         { success:false, message:"API version no longer supported" }
+
+  4. Move these APIs under v1:
+     - Login
+     - LoginNew
+     - useremail
+     - textcloud
+     - fetchemail
+     - fetchimg
+     - fetchtextcloud
+
+  5. Old routes must internally proxy to v1 logic.
+
+  6. No business logic duplication allowed.
+     - v1 must be the single source of truth.
+
+  7. Every API response in v1 must include:
+     - X-API-Version: v1
+
+  Success Criteria:
+  ✅ /api/v1/* works
+  ✅ /api/* still works with deprecation header
+  ✅ Unknown versions are rejected
+  ✅ No duplicate logic exists
+  ✅ Tests must pass
+
+author_name: faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: hard
+category: Architecture
+tags: [api-versioning, nextjs, middleware, backend]
+parser_name: pytest

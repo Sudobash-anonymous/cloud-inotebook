@@ -1,0 +1,66 @@
+task_description: |
+  task-08
+
+  Title:
+  Implement Soft Delete & Audit Fields Across Text & Image Data
+
+  Problem:
+  The current delete APIs permanently remove data:
+  - /api/deleteimage
+  - /api/deletetextcloud
+
+  Issues:
+  - No recovery possible after delete
+  - No audit timestamps
+  - No way to detect deleted vs active records
+  - Data loss risk in production
+
+  Requirements:
+
+  1. Add mandatory audit fields to BOTH models:
+     - createdAt (auto)
+     - updatedAt (auto)
+     - deletedAt (nullable)
+
+  2. Replace physical deletes with SOFT DELETE:
+     - delete = set deletedAt = new Date()
+
+  3. All fetch APIs must IGNORE soft-deleted records:
+     - /api/fetchtextcloud
+     - /api/fetchemail
+     - /api/fetchimg
+
+  4. All update APIs must update updatedAt:
+     - /api/edittextcloud
+     - /api/textcloud
+     - /api/addimage
+
+  5. Hard delete is NOT allowed anywhere.
+
+  6. Models affected:
+     - model/text/page.js
+     - model/image/page.js
+
+  7. APIs affected:
+     - addimage
+     - deleteimage
+     - deletetextcloud
+     - edittextcloud
+     - fetchtextcloud
+     - fetchemail
+     - fetchimg
+     - textcloud
+
+  Success Criteria:
+  ✅ No physical deletes exist
+  ✅ deletedAt replaces deletions
+  ✅ Fetch ignores deleted data
+  ✅ updatedAt always changes on update
+  ✅ Tests must pass
+
+author_name: faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: medium
+category: DataIntegrity
+tags: [soft-delete, audit, mongodb, api]
+parser_name: pytest

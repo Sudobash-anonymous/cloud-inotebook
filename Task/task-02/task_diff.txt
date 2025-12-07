@@ -1,0 +1,21 @@
++export default function validateEnv() {
++  const required = [
++    "MONGODB_URI",
++    "PASSWORD_SECRET_",
++    "JWT_SECRET_"
++  ];
++
++  for (const key of required) {
++    if (!process.env[key]) {
++      throw new Error("Missing required environment variables");
++    }
++  }
++
++  if (process.env.PASSWORD_SECRET_.length < 16) {
++    throw new Error("Secret too weak: PASSWORD_SECRET_");
++  }
++
++  if (process.env.JWT_SECRET_.length < 24) {
++    throw new Error("Secret too weak: JWT_SECRET_");
++  }
++}

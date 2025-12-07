@@ -1,0 +1,31 @@
+--- a/app/testConnect/page.js
++++ b/app/testConnect/page.js
+@@
+ import mongoose from "mongoose";
+ import dotenv from "dotenv";
+
+ dotenv.config();
+
++let isConnected = false;
+
+-export default async function testConnect(handler) {
+-  if (mongoose.connections[0].readyState) return handler;
++export default async function testConnect() {
++  if (!process.env.MONGODB_URI) {
++    throw new Error("❌ MONGODB_URI is missing in .env");
++  }
+
+   try {
+-    await mongoose.connect(process.env.MONGODB_URI);
+-    return handler;
++    if (!isConnected) {
++      await mongoose.connect(process.env.MONGODB_URI);
++      isConnected = true;
++      console.log("✅ MongoDB connected");
++    }
+   } catch (err) {
+-    return new Response(JSON.stringify({ error: "DB failure" }), { status: 500 });
++    console.error("❌ MongoDB fatal error:", err.message);
++    throw new Error("Database connection failed");
+   }
+ }

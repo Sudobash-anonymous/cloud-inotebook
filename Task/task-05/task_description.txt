@@ -1,0 +1,58 @@
+task_description: |
+  task-05
+
+  Title:
+  Fix JWT Security, Token Handling, and Unauthorized Access Bugs
+
+  Problem:
+  Currently the authentication system has multiple security and logic issues:
+
+  - /api/useremail accepts JWT from headers without proper format validation.
+  - Missing database connection in useremail route.
+  - No consistent token error format.
+  - Expired or malformed tokens can crash routes.
+  - No role or identity verification beyond raw token decode.
+
+  Requirements:
+
+  1. Enforce "Authorization: Bearer <token>" format in /api/useremail.
+     - If missing or invalid → return 401 with:
+       { success: false, message: "Unauthorized" }
+
+  2. Always connect database using testConnect in:
+     - /api/useremail
+     - /api/Login
+     - /api/LoginNew
+
+  3. JWT Verification Hardening:
+     - Catch expired token separately.
+     - Catch malformed token separately.
+     - Both must return:
+       status 401
+       { success:false, message:"Invalid or expired token" }
+
+  4. Identity Safety:
+     - useremail must ONLY fetch data using email from token
+     - Never trust email sent from frontend
+
+  5. Standard API error format:
+     Every auth failure must return:
+     { success:false, message:string }
+
+  Modified files (minimum):
+  - app/api/useremail/route.js
+  - app/api/Login/route.js
+  - app/api/LoginNew/route.js
+
+  Success Criteria:
+  - No route crashes on bad JWT
+  - All protected routes reject invalid tokens
+  - Token must be passed only in Authorization header
+  - Tests must pass
+
+author_name: faiz ahmad
+author_email: mdfaizahmad678@gmail.com
+difficulty: medium
+category: Bug
+tags: [jwt, auth, security, api]
+parser_name: pytest

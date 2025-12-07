@@ -1,0 +1,330 @@
+*** Begin Patch
+*** Add File: lib/auth.js
++import jwt from "jsonwebtoken";
++import User from "@/model/UserLogin/page";
++
++export function verifyToken(token) {
++  if (!token) {
++    throw new Error("Missing token");
++  }
++
++  let raw = token;
++
++  if (raw.startsWith("Bearer ")) {
++    raw = raw.slice(7);
++  }
++
++  try {
++    const payload = jwt.verify(raw, process.env.JWT_SECRET_);
++    // Only return minimal data
++    return {
++      id: payload.id,
++      email: payload.email,
++      name: payload.name,
++    };
++  } catch (err) {
++    throw new Error("Invalid or expired token");
++  }
++}
++
++export async function requireAuth(req) {
++  const headerToken = req.headers.get("authorization") || req.headers.get("Authorization");
++  const customToken = req.headers.get("token");
++
++  const token = headerToken || customToken;
++
++  let decoded;
++  try {
++    decoded = verifyToken(token);
++  } catch (err) {
++    // Don't log the token, only the error type
++    console.error("Auth error:", err.message);
++    throw new Response(
++      JSON.stringify({
++        success: false,
++        message: "Invalid or expired token",
++      }),
++      {
++        status: 401,
++        headers: { "Content-Type": "application/json" },
++      }
++    );
++  }
++
++  // Optionally ensure user still exists
++  const user = await User.findOne({ email: decoded.email });
++  if (!user) {
++    throw new Response(
++      JSON.stringify({
++        success: false,
++        message: "Invalid or expired token",
++      }),
++      {
++        status: 401,
++        headers: { "Content-Type": "application/json" },
++      }
++    );
++  }
++
++  return {
++    id: user._id.toString(),
++    email: user.email,
++    name: user.name,
++  };
++}
++
+*** End File
+*** Update File: app/api/useremail/route.js
+@@
+-import Order from "@/model/UserLogin/page";
+-import jwt from "jsonwebtoken";
+-
+-
+-export const POST = async (req) => {
+-  try {
+-    const token = req.headers.get("token");
+-
+-    if (!token) {
+-      return new Response(JSON.stringify({
+-        success: false,
+-        message: "Token not provided", 
+-      }), {
+-        status: 401,
+-        headers: { "Content-Type": "application/json" },
+-      });
+-    }
+-
+-    // Verify token
+-    let decoded;
+-    try {
+-      decoded = jwt.verify(token, process.env.JWT_SECRET_);
+-    } catch (err) {
+-      return new Response(JSON.stringify({
+-        success: false,
+-        message: "Token expired or invalid",
+-      }), {
+-        status: 401, // 👈 This tells frontend it's unauthorized
+-        headers: { "Content-Type": "application/json" },
+-      });
+-    }
+-
+-    // Optional: fetch additional user data
+-    const orders = await Order.find({ email: decoded.email });
+-
+-    return new Response(JSON.stringify({
+-      success: true,
+-      email: decoded.email,
+-      orders,
+-    }), {
+-      status: 200,
+-      headers: { "Content-Type": "application/json" },
+-    });
+-
+-  } catch (error) {
+-    return new Response(JSON.stringify({
+-      success: false,
+-      message: "Internal server error",
+-      error: error.message,
+-    }), {
+-      status: 500,
+-      headers: { "Content-Type": "application/json" },
+-    });
+-  }
+-};
++import User from "@/model/UserLogin/page";
++import { requireAuth } from "@/lib/auth";
++
++export const POST = async (req) => {
++  try {
++    const authUser = await requireAuth(req);
++
++    const orders = await User.find({ email: authUser.email });
++
++    return new Response(
++      JSON.stringify({
++        success: true,
++        email: authUser.email,
++        orders,
++      }),
++      {
++        status: 200,
++        headers: { "Content-Type": "application/json" },
++      }
++    );
++  } catch (error) {
++    if (error instanceof Response) {
++      return error;
++    }
++
++    console.error("useremail API error:", error.message);
++
++    return new Response(
++      JSON.stringify({
++        success: false,
++        message: "Internal server error",
++      }),
++      {
++        status: 500,
++        headers: { "Content-Type": "application/json" },
++      }
++    );
++  }
++};
++
+*** Update File: app/api/textcloud/route.js
+@@
+-import mongoose from "mongoose";
+-import testConnect from "@/testConnect/page";
+-import Contact from "@/model/text/page"; // Adjust if needed
+-
+-export async function POST(req) {
+-  try {
+-    await testConnect();
+-
+-    const body = await req.json();
+-    const { subject, tag, message, email } = body;
+-
+-    // ✅ Check for all required fields
+-    if (!subject || !tag || !message || !email) {
+-      return new Response(JSON.stringify({ error: "All fields are required." }), {
+-        status: 400,
+-        headers: { "Content-Type": "application/json" },
+-      });
+-    }
+-
+-    const newMessage = await Contact.create({ subject, tag, message, email });
+-
+-    return new Response(JSON.stringify({ success: true, data: newMessage }), {
+-      status: 201,
+-      headers: { "Content-Type": "application/json" },
+-    });
+-
+-  } catch (err) {
+-    return new Response(JSON.stringify({ error: "Failed to save data", details: err.message }), {
+-      status: 500,
+-      headers: { "Content-Type": "application/json" },
+-    });
+-  }
+-}
++import testConnect from "@/testConnect/page";
++import Contact from "@/model/text/page";
++import { requireAuth } from "@/lib/auth";
++
++export async function POST(req) {
++  try {
++    await testConnect();
++
++    const authUser = await requireAuth(req);
++    const body = await req.json();
++    const { subject, tag, message } = body;
++
++    if (!subject || !tag || !message) {
++      return new Response(
++        JSON.stringify({ error: "All fields are required." }),
++        {
++          status: 400,
++          headers: { "Content-Type": "application/json" },
++        }
++      );
++    }
++
++    const newMessage = await Contact.create({
++      subject,
++      tag,
++      message,
++      email: authUser.email,
++    });
++
++    return new Response(
++      JSON.stringify({ success: true, data: newMessage }),
++      {
++        status: 201,
++        headers: { "Content-Type": "application/json" },
++      }
++    );
++  } catch (err) {
++    if (err instanceof Response) {
++      return err;
++    }
++
++    return new Response(
++      JSON.stringify({
++        error: "Failed to save data",
++        details: err.message,
++      }),
++      {
++        status: 500,
++        headers: { "Content-Type": "application/json" },
++      }
++    );
++  }
++}
++
+*** Update File: app/api/addimage/route.js
+@@
+-import { NextResponse } from "next/server";
+-import Upload from "@/model/image/page";
+-import dbConnect from "@/testConnect/page";
+-
+-export async function POST(req) {
+-  await dbConnect();
+-
+-  const formData = await req.formData();
+-  const email = formData.get("email");
+-  const file = formData.get("file");
+-
+-  if (!email || !file) {
+-    return NextResponse.json({ success: false, message: "Email and file are required" }, { status: 400 });
+-  }
+-
+-  const buffer = Buffer.from(await file.arrayBuffer());
+-
+-  const newUpload = new Upload({
+-    email,
+-    file: {
+-      data: buffer,
+-      contentType: file.type,
+-      originalName: file.name,
+-    },
+-  });
+-
+-  await newUpload.save();
+-
+-  return NextResponse.json({ success: true, id: newUpload._id });
+-}
++import { NextResponse } from "next/server";
++import Upload from "@/model/image/page";
++import dbConnect from "@/testConnect/page";
++import { requireAuth } from "@/lib/auth";
++
++export async function POST(req) {
++  await dbConnect();
++
++  const authUser = await requireAuth(req);
++  const formData = await req.formData();
++  const file = formData.get("file");
++
++  if (!file) {
++    return NextResponse.json(
++      { success: false, message: "File is required" },
++      { status: 400 }
++    );
++  }
++
++  const buffer = Buffer.from(await file.arrayBuffer());
++
++  const newUpload = new Upload({
++    email: authUser.email,
++    file: {
++      data: buffer,
++      contentType: file.type,
++      originalName: file.name,
++    },
++  });
++
++  await newUpload.save();
++
++  return NextResponse.json({ success: true, id: newUpload._id });
++}
++
+*** End Patch

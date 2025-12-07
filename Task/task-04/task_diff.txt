@@ -1,0 +1,51 @@
+*** Update File: model/UserLogin/page.js
++userSchema.index({ email: 1 }, { unique: true });
+
+*** Update File: model/text/page.js
++ContactSchema.index({ email: 1 });
+
+*** Update File: model/image/page.js
++UploadSchema.index({ email: 1 });
+
+*** Update File: app/api/fetchimg/route.js
+@@
++const page = Math.max(1, parseInt(req.nextUrl.searchParams.get("page") || "1"));
++const limit = Math.min(50, parseInt(req.nextUrl.searchParams.get("limit") || "10"));
++const skip = (page - 1) * limit;
++
++const total = await Upload.countDocuments({ email });
++const uploads = await Upload.find({ email }).skip(skip).limit(limit);
++
++return NextResponse.json({
++  success: true,
++  totalRecords: total,
++  currentPage: page,
++  totalPages: Math.ceil(total / limit),
++  data: uploads
++});
+
+*** Update File: app/api/fetchtextcloud/route.js
+@@
++const page = Math.max(1, parseInt(body.page || "1"));
++const limit = Math.min(50, parseInt(body.limit || "10"));
++const skip = (page - 1) * limit;
++
++const total = await Contact.countDocuments({ email });
++const messages = await Contact.find({ email }).skip(skip).limit(limit);
++
++return new Response(JSON.stringify({
++  success: true,
++  totalRecords: total,
++  currentPage: page,
++  totalPages: Math.ceil(total / limit),
++  data: messages
++}), { status: 200 });
+
+*** Update File: app/api/fetchemail/route.js
+@@
++const page = Math.max(1, parseInt(req.nextUrl.searchParams.get("page") || "1"));
++const limit = Math.min(50, parseInt(req.nextUrl.searchParams.get("limit") || "10"));
++const skip = (page - 1) * limit;
++
++const total = await Upload.countDocuments({ email });
++const files = await Upload.find({ email }).skip(skip).limit(limit);
