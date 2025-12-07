@@ -1,0 +1,36 @@
+# version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=mongodb+srv://mohit:mohityadav6392%40@cluster0.w9emksp.mongodb.net/my_All_data?retryWrites=true&w=majority&appName=Cluster0
+GMAIL_USER=mohityadavhhhhh@gmail.com
+GMAIL_PASS=cryzypsmbsxcpugl
+PASSWORD_SECRET_=mohit 
+JWT_SECRET_=mohit_yadav
+
+
+
+# path=http://localhost:3000/
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
