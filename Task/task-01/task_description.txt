@@ -1,13 +1,12 @@
-Implementation File Requirement:
+Requiremnt for implementation.
 
 The unified reusable database connector MUST be implemented in the following file:
 
 app/testConnect/page.js
 
-All API routes must import and use this exact file. The automated test suite will
-directly load this file using Node.js to verify correct behavior when environment
-variables such as MONGODB_URI are missing. Any other connector file location
-will be considered invalid.
+This exact file must be imported and used by all API routes. 
+When environment variables like MONGODB_URI are absent, the automated test suite will load this file directly using Node.js to confirm proper behavior. 
+Any other location for the connector file will be regarded as insufficient.
 
 
 task_description: |
@@ -31,11 +30,11 @@ task_description: |
   - No centralized DB connection validation
 
   Requirements:
-  1. Refactor database connection into a single safe, idempotent connector.
-  2. Prevent build-time crashes when env variables are missing.
-  3. Ensure runtime throws a hard error if DB connection fails.
-  4. All API routes must use the same database connector.
-  5. Remove deprecated handler-style middleware usage.
+  1. Redesign database connections into a single, secure, idempotent connector.
+  2. Avoid build-time crashes caused by missing environment variables.
+  3.Make sure that if the database connection fails, runtime issues a hard error.
+  4. The same database connector must be used by all API routes.
+  5. Eliminate the use of outdated handler-style middleware.
   6. Ensure stable behavior in:
      - npm run dev
      - npm run build
@@ -45,12 +44,12 @@ task_description: |
   7. Mongoose buffering timeout must never occur.
 
   Success Criteria:
-  - All API routes connect to DB reliably
-  - Build never crashes due to DB/env issues
-  - Missing env produces readable error
-  - No "buffering timed out" error exists
-  - All tests pass
-  - Docker build succeeds without runtime env present
+  - All API routes consistently connect to the database; 
+  - The build never crashes because of database or environment problems.
+  The absence of runtime environment results in a readable error; 
+  there is no "buffering timed out" error; 
+  all tests pass;
+  the Docker build is successful even in the absence of runtime environment.
 
 author_name: Faiz ahmad
 author_email: mdfaizahmad678@gmail.com

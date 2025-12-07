@@ -5,7 +5,7 @@ import re
 
 
 def run(cmd, env=None):
-    """Run shell command and capture output."""
+    # """Run shell command and capture output."""
     return subprocess.run(
         cmd,
         shell=True,
@@ -14,33 +14,32 @@ def run(cmd, env=None):
         env=env
     )
 
-
 def test_dev_mode_runs():
-    """Dev mode must start without crashing."""
+    # """Dev mode must start without crashing."""
     out = run("npm run dev -- --help")
     assert out.returncode == 0
 
 
 def test_build_does_not_crash():
-    """Production build must succeed without DB access."""
+    # """Production build must succeed without DB access."""
     out = run("npm run build")
     assert out.returncode == 0
 
 
 def test_start_runs():
-    """Production start must be callable."""
+    # """Production start must be callable."""
     out = run("npm start -- --help")
     assert out.returncode == 0
 
 
 def test_docker_build_succeeds():
-    """Docker build must succeed without DB access."""
+    # """Docker build must succeed without DB access."""
     out = run("docker build -t test-task01 .")
     assert out.returncode == 0
 
 
 def test_missing_env_fails_cleanly():
-    """Missing MONGODB_URI must cause a clean hard failure."""
+    # """Missing MONGODB_URI must cause a clean hard failure."""
     env = os.environ.copy()
     env.pop("MONGODB_URI", None)
 
@@ -56,7 +55,7 @@ def test_missing_env_fails_cleanly():
 
 
 def test_runtime_db_failure_throws_hard_error():
-    """Invalid MongoDB URI must cause runtime failure immediately."""
+    # """Invalid MongoDB URI must cause runtime failure immediately."""
     env = os.environ.copy()
     env["MONGODB_URI"] = "mongodb://127.0.0.1:1/invalid"
 
@@ -77,10 +76,10 @@ def test_runtime_db_failure_throws_hard_error():
 
 
 def test_all_api_routes_use_shared_connector():
-    """
-    Every API route must import the unified DB connector.
-    Prevents duplicated or legacy connectors.
-    """
+    # """
+    # Every API route must import the unified DB connector.
+    # Prevents duplicated or legacy connectors.
+    # """
     api_files = glob.glob("app/api//route.js", recursive=True)
     assert api_files, "No API route files found"
 
@@ -114,17 +113,17 @@ def test_no_middleware_style_db_wrappers_exist():
 
 
 def test_buffering_timeout_error_not_present():
-    """
-    Ensure no Mongoose buffering timeout errors are present in logs.
-    """
+    # """
+    # Ensure no Mongoose buffering timeout errors are present in logs.
+    # """
     out = run("npm start")
     assert "buffering timed out" not in out.stderr.lower()
 
 
 def test_api_routes_handle_db_failure_consistently():
-    """
-    All API routes must return clean error responses when DB fails.
-    """
+    #
+    # All API routes must return clean error responses when DB fails.
+    #
     env = os.environ.copy()
     env["MONGODB_URI"] = "mongodb://127.0.0.1:1/invalid"
 
