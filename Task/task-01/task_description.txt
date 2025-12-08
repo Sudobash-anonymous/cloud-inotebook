@@ -1,4 +1,4 @@
-Requiremnt for implementation.
+Requirement for implementation.
 
 The unified reusable database connector MUST be implemented in the following file:
 
