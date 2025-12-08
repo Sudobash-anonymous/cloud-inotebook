@@ -3,7 +3,7 @@
 TASK=$1
 
 if [ -z "$TASK" ]; then
-  echo "❌ Task ID required"
+  echo " Task ID required"
   exit 1
 fi
 
