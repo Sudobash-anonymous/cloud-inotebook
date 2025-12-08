@@ -1,18 +1,15 @@
 #!/bin/bash
 
-TASK_ID=$1
+# Usage: ./tasks/task-05/run-tests.sh task-05
 
-if [ -z "$TASK_ID" ]; then
-  echo "❌ Please provide a task id"
-  echo "Usage: ./run-tests.sh task-05"
+TASK_ID=${1:-task-05}
+
+TEST_PATH="tasks/$TASK_ID/task_tests.py"
+
+if [ ! -f "$TEST_PATH" ]; then
+  echo "❌ Test file not found at: $TEST_PATH"
   exit 1
 fi
 
 echo "✅ Running tests for $TASK_ID ..."
-pytest task/$TASK_ID/task_tests.py
-
-if [ $? -eq 0 ]; then
-  echo "✅ Tests passed for $TASK_ID"
-else
-  echo "❌ Tests failed for $TASK_ID"
-  exit 1
+pytest "$TEST_PATH"

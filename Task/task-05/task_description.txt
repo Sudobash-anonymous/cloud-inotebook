@@ -2,57 +2,119 @@ task_description: |
   task-05
 
   Title:
-  Fix JWT Security, Token Handling, and Unauthorized Access Bugs
+  Harden JWT Authentication & Identity Safety Across Protected APIs
 
   Problem:
-  Currently the authentication system has multiple security and logic issues:
-
-  - /api/useremail accepts JWT from headers without proper format validation.
-  - Missing database connection in useremail route.
-  - No consistent token error format.
-  - Expired or malformed tokens can crash routes.
-  - No role or identity verification beyond raw token decode.
+  The current implementation of authentication on protected API routes is weak
+  and inconsistent:
+  - Some routes trust client-provided email instead of the identity inside the token
+  - Some routes do not enforce a strict "Authorization: Bearer <token>" header
+  - Error responses are inconsistent and sometimes leak details
+  - DB access may not consistently use the shared testConnect connector
 
   Requirements:
 
-  1. Enforce "Authorization: Bearer <token>" format in /api/useremail.
-     - If missing or invalid → return 401 with:
-       { success: false, message: "Unauthorized" }
+  1) Protected Routes & Bearer Header
 
-  2. Always connect database using testConnect in:
+     The following routes are considered "protected" and must enforce JWT-based
+     authentication in a consistent way:
+
+     - POST /api/useremail
+     - POST /api/textcloud
+
+     For these routes:
+
+     - The client must send the token ONLY in the HTTP header:
+       Authorization: Bearer <jwt>
+
+     - Tokens passed via query parameters or request body MUST be ignored
+       and treated as unauthorized.
+
+  2) Error Handling & Responses
+
+     For /api/useremail and /api/textcloud:
+
+     - If the Authorization header is missing:
+       - HTTP 401
+       - JSON body: { "success": false, "message": "Unauthorized" }
+
+     - If the header exists but the token is malformed (cannot be decoded / invalid JWT):
+       - HTTP 401
+       - JSON body: { "success": false, "message": "Invalid token" }
+
+     - If the token is well-formed but expired:
+       - HTTP 401
+       - JSON body: { "success": false, "message": "Token expired" }
+
+     - All auth failure responses must have:
+       - success: false
+       - message: a string
+       - no extra fields required
+
+  3) Identity Safety for /api/useremail
+
+     The /api/useremail route must:
+
+     - Decode the JWT and take the effective user email ONLY from the token payload
+       (e.g. decoded.email).
+     - It MUST NOT trust any client-provided "email" field in the body or query params.
+     - The response MUST include the authenticated user's email:
+       { "success": true, "email": "<email-from-token>", ... }
+
+     If a malicious client sends a body with an "email" different from the token:
+     - The route MUST still use the email from the token internally and in its response.
+
+  4) Shared DB Connector Usage
+
+     The following routes must use the shared database connector wrapper testConnect:
+
      - /api/useremail
      - /api/Login
      - /api/LoginNew
 
-  3. JWT Verification Hardening:
-     - Catch expired token separately.
-     - Catch malformed token separately.
-     - Both must return:
-       status 401
-       { success:false, message:"Invalid or expired token" }
+     This means:
+     - They import testConnect from the shared DB connection module.
+     - Their handlers are wrapped by testConnect to ensure consistent DB access
+       and connection error handling.
 
-  4. Identity Safety:
-     - useremail must ONLY fetch data using email from token
-     - Never trust email sent from frontend
+  5) Standard Auth Failure Format
 
-  5. Standard API error format:
-     Every auth failure must return:
-     { success:false, message:string }
+     All authentication failures on the protected routes (/api/useremail and
+     /api/textcloud) MUST:
 
-  Modified files (minimum):
-  - app/api/useremail/route.js
-  - app/api/Login/route.js
-  - app/api/LoginNew/route.js
+     - Return HTTP 401
+     - Return a JSON body with:
+       - success: false
+       - message: string
 
-  Success Criteria:
-  - No route crashes on bad JWT
-  - All protected routes reject invalid tokens
-  - Token must be passed only in Authorization header
-  - Tests must pass
+     No other structure is required, but this format must be consistent across
+     all auth error cases.
 
-author_name: faiz ahmad
+  6) Test Harness Assumptions
+
+     The test harness will:
+
+     - Call the running server on http://localhost:3000
+     - Provide the following environment variables during tests:
+       - VALID_TEST_JWT: a valid, non-expired JWT for a test user
+       - EXPIRED_TEST_JWT: the same user but with an expired JWT
+
+     The implementation must not depend on any specific email value;
+     however, behavior must be correct for both valid and expired tokens as
+     described above.
+
+  7) Files to Modify
+
+     The task primarily affects:
+
+     - app/api/useremail/route.js
+     - app/api/textcloud/route.js
+     - app/api/Login/route.js
+     - app/api/LoginNew/route.js
+
+author_name: Faiz ahmad
 author_email: mdfaizahmad678@gmail.com
-difficulty: medium
-category: Bug
-tags: [jwt, auth, security, api]
+difficulty: hard
+category: Security
+tags: [auth, jwt, nextjs, api]
 parser_name: pytest
