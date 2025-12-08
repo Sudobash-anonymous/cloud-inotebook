@@ -1,39 +1,108 @@
+import requests
+import subprocess
+import time
 import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(_file_)))
-API_DIR = os.path.join(BASE_DIR, "app", "api")
+BASE_URL = "http://localhost:3000"
 
-def read(path):
-    with open(path, encoding="utf-8") as f:
-        return f.read()
 
-def test_useremail_requires_bearer():
-    path = os.path.join(API_DIR, "useremail", "route.js")
-    c = read(path)
-    assert "Authorization" in c
-    assert "Bearer" in c
+def start_server():
+    """Ensure the Next.js server is running before tests execute."""
+    subprocess.Popen("npm start", shell=True)
+    time.sleep(5)
 
-def test_useremail_uses_testConnect():
-    path = os.path.join(API_DIR, "useremail", "route.js")
-    c = read(path)
-    assert "testConnect" in c
 
-def test_login_uses_testConnect():
-    path = os.path.join(API_DIR, "Login", "route.js")
-    c = read(path)
-    assert "testConnect" in c
+def test_missing_authorization_returns_401():
+    """
+    Missing Authorization header must return:
+    { success:false, message:'Unauthorized' } with HTTP 401.
+    """
+    start_server()
 
-def test_loginnew_uses_testConnect():
-    path = os.path.join(API_DIR, "LoginNew", "route.js")
-    c = read(path)
-    assert "testConnect" in c
+    res = requests.post(f"{BASE_URL}/api/useremail")
 
-def test_token_error_message_standard():
-    path = os.path.join(API_DIR, "useremail", "route.js")
-    c = read(path)
-    assert "Invalid or expired token" in c
+    assert res.status_code == 401
+    data = res.json()
 
-def test_identity_not_from_frontend():
-    path = os.path.join(API_DIR, "useremail", "route.js")
-    c = read(path)
-    assert "decoded.email" in c
+    assert data["success"] is False
+    assert data["message"] == "Unauthorized"
+
+
+def test_malformed_token_rejected():
+    """
+    Malformed token must return:
+    { success:false, message:'Invalid token' } with HTTP 401.
+    """
+    headers = {"Authorization": "Bearer abc.def.xyz"}
+
+    res = requests.post(f"{BASE_URL}/api/useremail", headers=headers)
+
+    assert res.status_code == 401
+    data = res.json()
+
+    assert data["success"] is False
+    assert data["message"] == "Invalid token"
+
+
+def test_expired_token_rejected_separately():
+    """
+    Expired JWT token must return:
+    { success:false, message:'Token expired' } with HTTP 401.
+    """
+    expired_token = os.getenv("EXPIRED_TEST_JWT")
+
+    headers = {"Authorization": f"Bearer {expired_token}"}
+
+    res = requests.post(f"{BASE_URL}/api/useremail", headers=headers)
+
+    assert res.status_code == 401
+    data = res.json()
+
+    assert data["success"] is False
+    assert data["message"] == "Token expired"
+
+
+def test_valid_token_allows_access():
+    """
+    Valid JWT token must allow access and return success:true.
+    """
+    valid_token = os.getenv("VALID_TEST_JWT")
+
+    headers = {"Authorization": f"Bearer {valid_token}"}
+
+    res = requests.post(f"{BASE_URL}/api/useremail", headers=headers)
+
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["success"] is True
+    assert "email" in data
+
+
+def test_protected_routes_use_standard_error_format():
+    """
+    All protected routes must return:
+    { success:false, message:string } on auth failure.
+    """
+    protected_routes = [
+        "/api/useremail",
+        "/api/textcloud"
+    ]
+
+    for route in protected_routes:
+        res = requests.post(f"{BASE_URL}{route}")
+
+        data = res.json()
+
+        assert res.status_code == 401
+        assert isinstance(data.get("message"), str)
+        assert data.get("success") is False
+
+
+def test_token_not_passed_as_query_param():
+    """
+    Security check: tokens passed as query params must be rejected.
+    """
+    res = requests.post(f"{BASE_URL}/api/useremail?token=abc")
+
+    assert res.status_code == 401

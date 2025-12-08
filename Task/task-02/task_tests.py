@@ -44,6 +44,9 @@ def test_dockerfile_has_no_env_args():
     assert "ARG PASSWORD_SECRET_" not in content
     assert "ARG JWT_SECRET_" not in content
     
+    
+    
+    
 def test_reject_partial_env():
     """Docstring for test_reject_partial_env"""
     env = "PASSWORD_SECRET_=supersecret"
